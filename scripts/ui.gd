@@ -279,7 +279,7 @@ func _build_menu() -> void:
 	sensor_lbl = _label("", 17, MUTED)
 	sensor_lbl.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(sensor_lbl)
-	var how := _label("Move your head left or right and the bus follows - move slowly to drift, quickly to swerve. Lean further left to pull into petrol stations.", 16, MUTED)
+	var how := _label("Move your head left or right and the bus follows - move slowly to drift, quickly to swerve. Look up to speed up, look down to slow down. Lean further left to pull into petrol stations.", 16, MUTED)
 	how.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	vb.add_child(how)
 	var srow := HBoxContainer.new()

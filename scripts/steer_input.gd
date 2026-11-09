@@ -70,7 +70,7 @@ func state() -> String:
 
 func message() -> String:
 	if not uses_sensor():
-		return "Arrow keys / A-D, or drag a finger across the screen."
+		return "Left/right or A/D to steer, up/down or W/S for speed, or drag a finger across the screen."
 	if not is_web():
 		return "Head and tilt steering only work in the web version. Using keys."
 	var js := _iface()
@@ -85,3 +85,12 @@ func control() -> float:
 		return NAN
 	var v := float(_iface().x) * sens
 	return -v if flip else v
+
+
+## Speed control from looking up (+) / down (-), clamped to -1..1 with a small
+## dead zone so a steady head holds cruise speed. NAN without head tracking.
+func throttle() -> float:
+	if mode != Mode.HEAD or state() != "ready":
+		return NAN
+	var v := clampf(float(_iface().y) * sens, -1.0, 1.0)
+	return 0.0 if absf(v) < 0.15 else (v - signf(v) * 0.15) / 0.85

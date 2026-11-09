@@ -10,9 +10,9 @@ Pick a mode on the title screen:
 
 | Mode | How it steers |
 | --- | --- |
-| Head (webcam) | The bus follows your head. Move slowly and it drifts; move quickly and it swerves (capped by the Power Steering upgrade). Lean further left to pull into a petrol station. |
+| Head (webcam) | The bus follows your head. Move slowly and it drifts; move quickly and it swerves (capped by the Power Steering upgrade). Look up to speed up (up to 140% of cruise speed), look down to slow down (down to 40%). Lean further left to pull into a petrol station. |
 | Tilt (phone) | Tilt the phone or tablet left/right like a steering wheel. iPhone asks for motion access on your first tap. |
-| Keys / Touch | Arrow keys or A/D, or drag a finger across the screen. |
+| Keys / Touch | Left/right arrows or A/D steer, up/down arrows or W/S change speed; or drag a finger across the screen. |
 
 The game re-centres when each run starts (look straight at the screen / hold the device how you'll play). **Re-centre** (or `C`) does it again mid-run; **Flip left / right** swaps directions if your camera or device reads them backwards. `Esc`/`P` pauses.
 

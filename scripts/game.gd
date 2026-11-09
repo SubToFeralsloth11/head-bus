@@ -12,6 +12,9 @@ const ROAD_LIMIT := 2.3
 const STATION_X := -7.7
 const STATION_LEN := 120.0
 const STATION_SPEED := 0.5
+## Looking fully up adds this fraction of cruise speed; fully down removes this much.
+const MAX_BOOST := 0.4
+const MAX_SLOW := 0.6
 const C_TO_X := 3.5
 const CHUNK := 40.0
 const SAVE_PATH := "user://save.cfg"
@@ -289,6 +292,7 @@ func _game_over() -> void:
 	ui.set_status("")
 	ui.set_countdown("")
 	ui.set_hud(run_money, dist, level, 0.0, maxi(hp, 0), hp_max)
+	ui.speed_lbl.modulate = Color.WHITE
 	ui.show_over("NEW RECORD!" if record else "CRASHED!",
 		"%d m   ·   Level %d\nEarned $%d\n%d close calls   ·   %d coins\nBest %d m   ·   Bank $%d"
 		% [int(dist), level, earned, near_misses, coins, int(save.best), int(save.money)])
@@ -403,9 +407,19 @@ func _play_update(dt: float) -> void:
 	lat_vel = lerpf(lat_vel, (nx - bx) / dt, 10.0 * dt)
 	bus.position.x = nx
 
-	# Speed: cruise, slow down in the petrol station, brake behind traffic.
+	# Speed: look up to speed up (to 140% of cruise), down to slow (to 40%);
+	# up/down keys do the same. Capped in the petrol station, brake behind traffic.
+	var thr := steer.throttle()
+	var kthr := int(Input.is_key_pressed(KEY_UP) or Input.is_key_pressed(KEY_W)) \
+		- int(Input.is_key_pressed(KEY_DOWN) or Input.is_key_pressed(KEY_S))
+	if kthr != 0:
+		thr = kthr
+	elif is_nan(thr):
+		thr = 0.0
+	var desired := cruise * (1.0 + thr * (MAX_BOOST if thr > 0.0 else MAX_SLOW))
 	var in_station := nx < -3.7
-	var desired := cruise * STATION_SPEED if in_station else cruise
+	if in_station:
+		desired = minf(desired, cruise * STATION_SPEED)
 	for e in ents:
 		if e.hit or e.dir != -1:
 			continue
@@ -420,6 +434,7 @@ func _play_update(dt: float) -> void:
 	bus.position.z -= spd * dt
 	dist += spd * dt
 	run_money += 0.0025 * spd * spd * dt * _fare()
+	ui.speed_lbl.modulate = GameUI.GOOD if thr > 0.05 else (GameUI.ACCENT if thr < -0.05 else Color.WHITE)
 
 	_update_stations()
 	_spawn_traffic(dt)
