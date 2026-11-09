@@ -3,6 +3,7 @@
 //   window.TILT - device tilt (deviceorientation)
 // Both expose: state ("off" | "loading"/"waiting"/"noface"/"permission" | "ready" | "error"),
 // msg (human-readable status), x (steering control, 0 = centre), start(), calibrate().
+// HT also exposes y (speed control: + looking up, - looking down, 0 = centre).
 (() => {
   "use strict";
   const MP = "https://cdn.jsdelivr.net/npm/@mediapipe/tasks-vision@0.10.14";
@@ -11,16 +12,24 @@
   // Head offset (fraction of camera width) that equals one control unit,
   // i.e. moving from your lane into the oncoming lane.
   const HEAD_UNIT = 0.11;
+  // Looking up/down: change in (nose below eyes) / (eye spacing) that equals one
+  // speed unit, and vertical head movement (fraction of camera height) that does.
+  const PITCH_UNIT = 0.15;
+  const LIFT_UNIT = 0.08;
   // Tilt angle in degrees that equals one control unit.
   const TILT_UNIT = 18;
 
   // ---------------------------------------------------------------- head ----
-  const HT = (window.HT = { state: "off", msg: "Camera off", x: 0, face: false });
+  const HT = (window.HT = { state: "off", msg: "Camera off", x: 0, y: 0, face: false });
   let video = null;
   let detector = null;
   let lastTime = -1;
   let smooth = 0.5;
   let centre = 0.5;
+  let pitch = 0;
+  let pitchCentre = 0;
+  let lift = 0.5;
+  let liftCentre = 0.5;
   let previewOn = false;
 
   HT.start = async () => {
@@ -77,20 +86,37 @@
       const res = detector.detectForVideo(video, performance.now());
       const d = res.detections && res.detections[0];
       if (d) {
-        let nx;
+        let nx, np, ny;
         const kp = d.keypoints;
         if (kp && kp.length >= 3) {
           nx = (kp[0].x + kp[1].x + kp[2].x) / 3; // both eyes + nose tip
+          ny = (kp[0].y + kp[1].y + kp[2].y) / 3;
+          // Pitch: how far the nose sits below the eyes, relative to eye spacing (in pixels).
+          const w = video.videoWidth, h = video.videoHeight;
+          const eyeDist = Math.hypot((kp[0].x - kp[1].x) * w, (kp[0].y - kp[1].y) * h);
+          np = ((kp[2].y - (kp[0].y + kp[1].y) / 2) * h) / Math.max(eyeDist, 1);
         } else {
-          nx = (d.boundingBox.originX + d.boundingBox.width / 2) / video.videoWidth;
+          const bb = d.boundingBox;
+          nx = (bb.originX + bb.width / 2) / video.videoWidth;
+          ny = (bb.originY + bb.height / 2) / video.videoHeight;
+          np = pitch;
         }
-        if (!HT.face) smooth = nx; // no lag when the face reappears
+        if (!HT.face) {
+          // No lag when the face reappears.
+          smooth = nx;
+          pitch = np;
+          lift = ny;
+        }
         smooth += (nx - smooth) * 0.6;
+        pitch += (np - pitch) * 0.5;
+        lift += (ny - lift) * 0.5;
         HT.face = true;
         HT.state = "ready";
         HT.msg = "Tracking your head";
         // The camera image is not mirrored: your left is the image's right.
         HT.x = -(smooth - centre) / HEAD_UNIT;
+        // Looking up shortens nose-to-eyes and raises the face: both read as positive.
+        HT.y = -(pitch - pitchCentre) / PITCH_UNIT - (lift - liftCentre) / LIFT_UNIT;
       } else {
         HT.face = false;
         HT.state = "noface";
@@ -102,7 +128,10 @@
 
   HT.calibrate = () => {
     centre = smooth;
+    pitchCentre = pitch;
+    liftCentre = lift;
     HT.x = 0;
+    HT.y = 0;
   };
   HT.preview = (on) => {
     previewOn = !!on;
